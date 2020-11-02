@@ -1,0 +1,1 @@
+python train.py --dataroot ./datasets/maps --name maps_cyclegan --model cycle_gan --max_dataset_size 50 --n_epochs 50 --n_epochs_decay 50 --lr 0.001
