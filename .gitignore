@@ -1,6 +1,8 @@
 .DS_Store
 debug*
 maps/
+horse/
+scenery/
 checkpoints/
 results/
 build/
