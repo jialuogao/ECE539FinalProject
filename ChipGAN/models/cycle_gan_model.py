@@ -243,6 +243,7 @@ class CycleGANModel(BaseModel):
             self.loss_idt_A = 0
             self.loss_idt_B = 0
 
+##########################################################
         # GAN loss D_A(G_A(A))
         fake_B = self.netG_A(self.real_A)
         edge_real_A = F.sigmoid(self.hed_model(self.real_A).detach())
@@ -302,6 +303,7 @@ class CycleGANModel(BaseModel):
         self.loss_cycle_A = loss_cycle_A.data
         self.loss_cycle_B = loss_cycle_B.data
         self.loss_edge_1 = loss_edge_1.data
+##########################################################
 
     def optimize_parameters(self, lambda_sup):
         # forward
