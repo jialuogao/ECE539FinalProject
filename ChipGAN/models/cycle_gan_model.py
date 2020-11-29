@@ -71,6 +71,7 @@ class CycleGANModel(BaseModel):
                                             opt.which_model_netD,
                                             opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
 
+##########################################################
             self.netD_ink = networks.define_D(opt.output_nc, opt.ndf,
                                               opt.which_model_netD,
                                               opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
@@ -89,7 +90,7 @@ class CycleGANModel(BaseModel):
             for param in self.hed_model.parameters():
                 param.requires_grad = False
             # ~~~~~~
-
+##########################################################
 
 
         if not self.isTrain or opt.continue_train:
@@ -99,13 +100,17 @@ class CycleGANModel(BaseModel):
             if self.isTrain:
                 self.load_network(self.netD_A, 'D_A', which_epoch)
                 self.load_network(self.netD_B, 'D_B', which_epoch)
+##########################################################
                 self.load_network(self.netD_ink, 'D_ink', which_epoch)
+##########################################################
 
         if self.isTrain:
             self.old_lr = opt.lr
             self.fake_A_pool = ImagePool(opt.pool_size)
             self.fake_B_pool = ImagePool(opt.pool_size)
+##########################################################
             self.ink_fake_B_pool = ImagePool(opt.pool_size)
+##########################################################
             # define loss functions
             self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
             self.criterionCycle = torch.nn.L1Loss()
@@ -115,13 +120,17 @@ class CycleGANModel(BaseModel):
                                                 lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D_A = torch.optim.Adam(self.netD_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D_B = torch.optim.Adam(self.netD_B.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+##########################################################
             self.optimizer_D_ink = torch.optim.Adam(self.netD_ink.parameters(),lr=opt.lr,betas=(opt.beta1, 0.999))
+##########################################################
             self.optimizers = []
             self.schedulers = []
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D_A)
             self.optimizers.append(self.optimizer_D_B)
+##########################################################
             self.optimizers.append(self.optimizer_D_ink)
+##########################################################
             for optimizer in self.optimizers:
                 self.schedulers.append(networks.get_scheduler(optimizer, opt))
 
@@ -148,6 +157,7 @@ class CycleGANModel(BaseModel):
         self.real_A = Variable(self.input_A)
         self.real_B = Variable(self.input_B)
 
+##########################################################
         kernel_size = 5
         pad_size = kernel_size/2
         p1d = (pad_size,pad_size,pad_size,pad_size)
@@ -159,8 +169,10 @@ class CycleGANModel(BaseModel):
         res3 = self.gauss_conv(erode_real_B[:, 2, :, :].unsqueeze(1))
 
         self.ink_real_B = torch.cat((res1, res2, res3),dim = 1)
+##########################################################
 
     def test(self):
+##########################################################
         real_A = Variable(self.input_A, volatile=True)
         fake_B = self.netG_A(real_A)
         self.rec_A = self.netG_B(fake_B).data
@@ -173,6 +185,7 @@ class CycleGANModel(BaseModel):
         self.fake_A = fake_A.data
         self.ink_real_B = fake_A
         self.ink_fake_B = self.fake_A
+##########################################################
 
     # get image paths
     def get_image_paths(self):
@@ -222,8 +235,8 @@ class CycleGANModel(BaseModel):
 
             self.idt_A = idt_A.data
             self.idt_B = idt_B.data
-            self.loss_idt_A = loss_idt_A.data[0]
-            self.loss_idt_B = loss_idt_B.data[0]
+            self.loss_idt_A = loss_idt_A.data
+            self.loss_idt_B = loss_idt_B.data
         else:
             loss_idt_A = 0
             loss_idt_B = 0
