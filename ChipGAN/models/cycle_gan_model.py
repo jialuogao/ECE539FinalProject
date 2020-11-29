@@ -296,12 +296,12 @@ class CycleGANModel(BaseModel):
         self.edge_fake_B = edge_fake_B.data
         self.ink_fake_B = ink_fake_B.data
 
-        self.loss_G_A = loss_G_A.data[0]
-        self.loss_G_B = loss_G_B.data[0]
-        self.loss_G_ink = loss_G_ink.data[0]
-        self.loss_cycle_A = loss_cycle_A.data[0]
-        self.loss_cycle_B = loss_cycle_B.data[0]
-        self.loss_edge_1 = loss_edge_1.data[0]
+        self.loss_G_A = loss_G_A.data
+        self.loss_G_B = loss_G_B.data
+        self.loss_G_ink = loss_G_ink.data
+        self.loss_cycle_A = loss_cycle_A.data
+        self.loss_cycle_B = loss_cycle_B.data
+        self.loss_edge_1 = loss_edge_1.data
 
     def optimize_parameters(self, lambda_sup):
         # forward
