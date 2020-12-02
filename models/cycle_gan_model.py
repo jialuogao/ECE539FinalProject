@@ -3,7 +3,9 @@ import itertools
 from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
-
+from . import xdog
+import cv2
+import numpy as np
 
 class CycleGANModel(BaseModel):
     """
@@ -148,6 +150,21 @@ class CycleGANModel(BaseModel):
         fake_A = self.fake_A_pool.query(self.fake_A)
         self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_A, fake_A)
 
+    def no_sigmoid_cross_entropy(self, sig_logits, label):
+        sig_logits_tch = torch.from_numpy(sig_logits)
+        label_tch = torch.from_numpy(label)
+
+        count_neg = torch.sum(1.-label_tch)
+        count_pos = torch.sum(label_tch)
+
+        beta = count_neg / (count_pos+count_neg)
+        pos_weight = beta / (1-beta)
+
+        cost = pos_weight * label_tch * (-1) * torch.log(sig_logits_tch) + (1-label_tch)* (-1) * torch.log(1-sig_logits_tch)
+        cost = torch.mean(cost * (1-beta))
+
+        return cost
+
     def backward_G(self):
         """Calculate the loss for generators G_A and G_B"""
         lambda_idt = self.opt.lambda_identity
@@ -174,7 +191,30 @@ class CycleGANModel(BaseModel):
         # Backward cycle loss || G_A(G_B(B)) - B||
         self.loss_cycle_B = self.criterionCycle(self.rec_B, self.real_B) * lambda_B
         # combined loss and calculate gradients
-        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
+        
+        ###
+        lambda_sup = 10
+        rA = torch.sigmoid(self.real_A).cpu().detach().numpy()
+        fB = torch.sigmoid(self.fake_B).cpu().detach().numpy()
+        rA_gray = np.zeros((256,256))
+        fB_gray = np.zeros((256,256))
+        rA_gray += 0.299 * rA[0,0,:,:]
+        rA_gray += 0.587 * rA[0,1,:,:]
+        rA_gray += 0.114 * rA[0,2,:,:]
+        fB_gray += 0.299 * fB[0,0,:,:]
+        fB_gray += 0.587 * fB[0,1,:,:]
+        fB_gray += 0.114 * fB[0,2,:,:]
+        #print(rA_gray)
+        #cv2.imshow("0",np.uint8(255*rA_gray))
+        edge_real_A = xdog.xdog_thresh(rA_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
+        edge_fake_B = xdog.xdog_thresh(fB_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
+        #cv2.imshow("1",np.uint8(255*edge_real_A))
+        #cv2.imshow("2",np.uint8(255*edge_fake_B))
+        #cv2.waitKey(0)
+        self.loss_edge = self.no_sigmoid_cross_entropy(sig_logits=edge_fake_B, label=edge_real_A) * lambda_sup
+        ###
+
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
         self.loss_G.backward()
 
     def optimize_parameters(self):
