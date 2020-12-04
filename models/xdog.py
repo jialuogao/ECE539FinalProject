@@ -3,6 +3,8 @@ import numpy as np
 
 def dog(img,size=(0,0),k=1.6,sigma=0.5,gamma=1):
     img1 = cv2.GaussianBlur(img,size,sigma)
+    print("img:")
+    print(np.max(img1))
     img2 = cv2.GaussianBlur(img,size,sigma*k)
     return (img1-gamma*img2)
 
@@ -14,6 +16,7 @@ def xdog(img,sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1):
                 img[i,j] = 1
             else:
                 img[i,j] = (1 + np.tanh(phi*(img[i,j])))
+    
     return img
 
 def xdog_thresh(img, sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1,alpha=1):
@@ -28,13 +31,14 @@ def xdog_thresh(img, sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1,alpha=1):
             if(img[i,j] > mean):
                 img[i,j] = max
     #cv2.imshow("3",np.uint8(img))
+    
     return img/max
 
 if __name__ == '__main__':
     # Open image in grayscale
     #img = cv2.imread('imgs/lena.jpg',cv2.CV_LOAD_IMAGE_GRAYSCALE)
     
-    img = cv2.imread('./imgs/scenery.png',cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread('./imgs/horse.png',cv2.IMREAD_GRAYSCALE)
     print(img.shape)
     img = cv2.resize(img,(400,400))
     print(img.shape)
@@ -49,8 +53,9 @@ if __name__ == '__main__':
 
     #cv2.imshow("XDoG Project 1",np.uint8(xdog(img,sigma=0.4,k=1.6, gamma=0.5,epsilon=-0.5,phi=10)))
     cv2.imshow("orig",img)
-    cv2.imshow("thres",np.uint8(255*xdog_thresh(img,sigma=2.2,k=1.6, gamma=0.98,epsilon=-0.1,phi=200)))
-
+    cv2.imshow("thres",np.uint8(255*xdog_thresh(img,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=200)))
+    print(img)
+    print(255*xdog_thresh(img,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=200))
     #cv2.imshow("XDoG Project 2",np.uint8(xdog(img,sigma=1.6,k=1.6, gamma=0.5,epsilon=-1,phi=10)))
 
     # Natural media (tried to follow parameters of article)

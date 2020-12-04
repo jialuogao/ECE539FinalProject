@@ -3,9 +3,24 @@ import itertools
 from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
-from . import xdog
-import cv2
+#from . import xdog
+from .model import Xdog
 import numpy as np
+import cv2
+
+def no_sigmoid_cross_entropy(sig_logits, label):
+    # print(sig_logits)
+    count_neg = torch.sum(1.-label)
+    count_pos = torch.sum(label)
+
+    beta = count_neg / (count_pos+count_neg)
+    pos_weight = beta / (1-beta)
+
+    cost = pos_weight * label * (-1) * torch.log(sig_logits) + (1-label)* (-1) * torch.log(1-sig_logits)
+    cost = torch.mean(cost * (1-beta))
+
+    return cost
+
 
 class CycleGANModel(BaseModel):
     """
@@ -54,7 +69,10 @@ class CycleGANModel(BaseModel):
         """
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
+        
+        #self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B', 'edge']
+        self.loss_names = ['edge']
+        
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A']
         visual_names_B = ['real_B', 'fake_A', 'rec_B']
@@ -82,6 +100,8 @@ class CycleGANModel(BaseModel):
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+            ##################
+            self.Xdog_model = Xdog()
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
@@ -150,21 +170,6 @@ class CycleGANModel(BaseModel):
         fake_A = self.fake_A_pool.query(self.fake_A)
         self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_A, fake_A)
 
-    def no_sigmoid_cross_entropy(self, sig_logits, label):
-        sig_logits_tch = torch.from_numpy(sig_logits)
-        label_tch = torch.from_numpy(label)
-
-        count_neg = torch.sum(1.-label_tch)
-        count_pos = torch.sum(label_tch)
-
-        beta = count_neg / (count_pos+count_neg)
-        pos_weight = beta / (1-beta)
-
-        cost = pos_weight * label_tch * (-1) * torch.log(sig_logits_tch) + (1-label_tch)* (-1) * torch.log(1-sig_logits_tch)
-        cost = torch.mean(cost * (1-beta))
-
-        return cost
-
     def backward_G(self):
         """Calculate the loss for generators G_A and G_B"""
         lambda_idt = self.opt.lambda_identity
@@ -194,27 +199,34 @@ class CycleGANModel(BaseModel):
         
         ###
         lambda_sup = 10
-        rA = torch.sigmoid(self.real_A).cpu().detach().numpy()
-        fB = torch.sigmoid(self.fake_B).cpu().detach().numpy()
+        
+        rA = torch.sigmoid(self.real_A)
+        fB = torch.sigmoid(self.fake_B)
+        edge_real_A = self.Xdog_model(rA)
+        edge_fake_B = self.Xdog_model(fB)
         rA_gray = np.zeros((256,256))
         fB_gray = np.zeros((256,256))
-        rA_gray += 0.299 * rA[0,0,:,:]
-        rA_gray += 0.587 * rA[0,1,:,:]
-        rA_gray += 0.114 * rA[0,2,:,:]
-        fB_gray += 0.299 * fB[0,0,:,:]
-        fB_gray += 0.587 * fB[0,1,:,:]
-        fB_gray += 0.114 * fB[0,2,:,:]
+
+        rA_gray += 0.299 * rA.data.cpu().numpy()[0,0,:,:]
+        rA_gray += 0.587 * rA.data.cpu().numpy()[0,1,:,:]
+        rA_gray += 0.114 * rA.data.cpu().numpy()[0,2,:,:]
+        fB_gray += 0.299 * fB.data.cpu().numpy()[0,0,:,:]
+        fB_gray += 0.587 * fB.data.cpu().numpy()[0,1,:,:]
+        fB_gray += 0.114 * fB.data.cpu().numpy()[0,2,:,:]
         #print(rA_gray)
-        #cv2.imshow("0",np.uint8(255*rA_gray))
-        edge_real_A = xdog.xdog_thresh(rA_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
-        edge_fake_B = xdog.xdog_thresh(fB_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
-        #cv2.imshow("1",np.uint8(255*edge_real_A))
-        #cv2.imshow("2",np.uint8(255*edge_fake_B))
-        #cv2.waitKey(0)
-        self.loss_edge = self.no_sigmoid_cross_entropy(sig_logits=edge_fake_B, label=edge_real_A) * lambda_sup
+        cv2.imshow("0",np.uint8(255*rA_gray))
+        cv2.imshow("1",np.uint8(255*fB_gray))
+        #edge_real_A = xdog.xdog_thresh(rA_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
+        #edge_fake_B = xdog.xdog_thresh(fB_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
+        cv2.imshow("2",np.uint8(255*edge_real_A.data.cpu().numpy()[0,0,:,:]))
+        cv2.imshow("3",np.uint8(255*edge_fake_B.data.cpu().numpy()[0,0,:,:]))
+        cv2.waitKey(0)
+        self.loss_edge = no_sigmoid_cross_entropy(edge_fake_B, edge_real_A) * lambda_sup
         ###
 
-        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
+        exit()
+        #self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
+        self.loss_G = self.loss_edge
         self.loss_G.backward()
 
     def optimize_parameters(self):
