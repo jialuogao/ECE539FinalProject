@@ -62,7 +62,6 @@ class Xdog(nn.Module):
         g_kernel1 = self.gauss_kernel(kernel, sigma, 1).transpose((3, 2, 1, 0))
         g_kernel2 = self.gauss_kernel(kernel, sigma*k, 1).transpose((3, 2, 1, 0))
         g_kerneldog = (g_kernel1 - self.gamma * g_kernel2)
-        print(g_kerneldog)
         gauss_conv_dog = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
         g_kernel3 = self.gauss_kernel(kernel, sigma*k, 1).transpose((3, 2, 1, 0))
         gauss_conv3 = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
