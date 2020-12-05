@@ -46,20 +46,19 @@ def xdog_thresh(img, sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1,alpha=1):
 class Xdog(nn.Module):
     def __init__(self):
         super(Xdog, self).__init__()
-        sigma=0.5
-        k=1.6
-        self.gamma=0.98
-        self.epsilon=-0.1
-        phi=150
-        alpha=1
-        kernel=round(sigma*4*2 + 1)|1
+        sigma=2
+        k=2
+        self.gamma=0.99
+        self.epsilon=-0.4
+        self.phi=150
+        kernel=round(sigma*3*2 + 1)|1
         padding=int(kernel/2)
         stride=1
         g_kernel1 = self.gauss_kernel(kernel, sigma, 1).transpose((3, 2, 1, 0))
         gauss_conv1 = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
         g_kernel2 = self.gauss_kernel(kernel, sigma*k, 1).transpose((3, 2, 1, 0))
         gauss_conv2 = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
-        g_kernel3 = self.gauss_kernel(kernel, sigma*3, 1).transpose((3, 2, 1, 0))
+        g_kernel3 = self.gauss_kernel(kernel, sigma, 1).transpose((3, 2, 1, 0))
         gauss_conv3 = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
         gauss_conv1.weight.data.copy_(torch.from_numpy(g_kernel1))
         gauss_conv2.weight.data.copy_(torch.from_numpy(g_kernel2))
@@ -96,19 +95,23 @@ class Xdog(nn.Module):
         
         ###################
         # gaussian
-        print('gray:', gray.shape)
+        #print('gray:', gray.shape)
         gauss1 = self.gauss_conv1(gray)
         gauss2 = self.gauss_conv2(gray)
         dog = gauss1-self.gamma*gauss2
-        print(torch.max(gauss1).cpu().data.numpy())
-        print('dog: ',dog.shape)
-        xdog = 1 + torch.tanh(math.pi * (torch.tanh(100*(dog-self.epsilon))/2+0.5)*dog)
-        print(xdog.data.cpu().numpy())
-        print('xdog: ',xdog.shape)
-        max = torch.max(xdog)
-        print(max.cpu().data.numpy())
-        print((xdog/max).cpu().data.numpy())
-        return xdog/max
+        #print(torch.max(gauss1).cpu().data.numpy())
+        #print('dog: ',dog.shape)
+        xdog = 1 + torch.tanh(self.phi * (torch.tanh(100*(dog-self.epsilon))/2+0.5)*dog)
+        #print(xdog.data.cpu().numpy())
+        #print('xdog: ',xdog.shape)
+        gauss3 = self.gauss_conv3(xdog)
+        mean = torch.mean(gauss3)*0.8
+        max = torch.max(gauss3)
+        xdog_threshold = (torch.tanh(100*(xdog-mean))/2+0.5)*max + (torch.tanh(100*(mean - xdog))/2+0.5)*xdog
+        min = torch.min(xdog_threshold)
+        #print(max,"asdf",min)
+        #print(((xdog_threshold-min)/(max-min)).cpu().data.numpy())
+        return (xdog_threshold-min)/(max-min)
     
 
 
