@@ -43,34 +43,36 @@ def xdog_thresh(img, sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1,alpha=1):
     #cv2.imshow("3",np.uint8(img))
     return img/max
 
+def norm(img):
+    max = torch.max(img)
+    min = torch.min(img)
+    return (img-min)/np.float64(max-min)
+
 class Xdog(nn.Module):
     def __init__(self):
         super(Xdog, self).__init__()
-        sigma=2
+        sigma=1
         k=2
         self.gamma=0.99
-        self.epsilon=-0.4
+        #self.epsilon=0.7
         self.phi=150
-        kernel=round(sigma*3*2 + 1)|1
+        kernel=round(sigma*k*3*2 + 1)|1
         padding=int(kernel/2)
         stride=1
         g_kernel1 = self.gauss_kernel(kernel, sigma, 1).transpose((3, 2, 1, 0))
-        gauss_conv1 = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
         g_kernel2 = self.gauss_kernel(kernel, sigma*k, 1).transpose((3, 2, 1, 0))
-        gauss_conv2 = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
-        g_kernel3 = self.gauss_kernel(kernel, sigma, 1).transpose((3, 2, 1, 0))
+        g_kerneldog = (g_kernel1 - self.gamma * g_kernel2)
+        print(g_kerneldog)
+        gauss_conv_dog = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
+        g_kernel3 = self.gauss_kernel(kernel, sigma*k, 1).transpose((3, 2, 1, 0))
         gauss_conv3 = nn.Conv2d(1, 1, kernel_size=kernel, stride=stride, padding=padding, bias=False)
-        gauss_conv1.weight.data.copy_(torch.from_numpy(g_kernel1))
-        gauss_conv2.weight.data.copy_(torch.from_numpy(g_kernel2))
+        gauss_conv_dog.weight.data.copy_(torch.from_numpy(g_kerneldog))
         gauss_conv3.weight.data.copy_(torch.from_numpy(g_kernel3))
-        gauss_conv1.weight.requires_grad = False
-        gauss_conv2.weight.requires_grad = False
+        gauss_conv_dog.weight.requires_grad = False
         gauss_conv3.weight.requires_grad = False
-        gauss_conv1.cuda()
-        gauss_conv2.cuda()
+        gauss_conv_dog.cuda()
         gauss_conv3.cuda()
-        self.gauss_conv1 = gauss_conv1
-        self.gauss_conv2 = gauss_conv2
+        self.gauss_conv_dog = gauss_conv_dog
         self.gauss_conv3 = gauss_conv3
 
     def gauss_kernel(self, kernlen=21, nsig=3, channels=1):
@@ -84,7 +86,6 @@ class Xdog(nn.Module):
         out_filter = np.repeat(out_filter, channels, axis=2)
         return out_filter
 
-
     def forward(self, input):
         #cuda0 = torch.device('cuda:0')
         #stemp = torch.zeros(256,256, device=cuda0)
@@ -95,23 +96,27 @@ class Xdog(nn.Module):
         
         ###################
         # gaussian
-        #print('gray:', gray.shape)
-        gauss1 = self.gauss_conv1(gray)
-        gauss2 = self.gauss_conv2(gray)
-        dog = gauss1-self.gamma*gauss2
+        dog = self.gauss_conv_dog(gray)
+    #    cv2.imshow("dog_norm",np.uint8(255*norm(dog).data.cpu().numpy()[0,0,:,:]))
+        #print(dog)
         #print(torch.max(gauss1).cpu().data.numpy())
         #print('dog: ',dog.shape)
-        xdog = 1 + torch.tanh(self.phi * (torch.tanh(100*(dog-self.epsilon))/2+0.5)*dog)
+        epsilon = torch.mean(dog) * 1.1
+        xdog = 1 + torch.tanh(self.phi * (torch.tanh(100*(dog-epsilon))/2+0.5)*dog)
+    #    cv2.imshow("xdog",np.uint8(255*norm(xdog).data.cpu().numpy()[0,0,:,:]))
         #print(xdog.data.cpu().numpy())
         #print('xdog: ',xdog.shape)
         gauss3 = self.gauss_conv3(xdog)
-        mean = torch.mean(gauss3)*0.8
+    #    cv2.imshow("gauss3",np.uint8(255*norm(gauss3).data.cpu().numpy()[0,0,:,:]))
+        mean = torch.mean(gauss3)*0.9
         max = torch.max(gauss3)
         xdog_threshold = (torch.tanh(100*(xdog-mean))/2+0.5)*max + (torch.tanh(100*(mean - xdog))/2+0.5)*xdog
         min = torch.min(xdog_threshold)
         #print(max,"asdf",min)
         #print(((xdog_threshold-min)/(max-min)).cpu().data.numpy())
-        return (xdog_threshold-min)/(max-min)
+    #    cv2.imshow("xdog_threshold",np.uint8(255*norm(xdog_threshold).data.cpu().numpy()[0,0,:,:]))
+    #    return xdog_threshold
+        return dog
     
 
 
