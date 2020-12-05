@@ -98,6 +98,8 @@ class Xdog(nn.Module):
         #print('gray:', gray.shape)
         gauss1 = self.gauss_conv1(gray)
         gauss2 = self.gauss_conv2(gray)
+        #dog = torch.sub(gauss1,gauss2)
+        #print(dog)
         dog = gauss1-self.gamma*gauss2
         #print(torch.max(gauss1).cpu().data.numpy())
         #print('dog: ',dog.shape)
@@ -112,6 +114,7 @@ class Xdog(nn.Module):
         #print(max,"asdf",min)
         #print(((xdog_threshold-min)/(max-min)).cpu().data.numpy())
         return (xdog_threshold-min)/(max-min)
+        #return dog
     
 
 
