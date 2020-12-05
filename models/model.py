@@ -111,7 +111,7 @@ class Xdog(nn.Module):
         mean = torch.mean(gauss3)*0.9
         max = torch.max(gauss3)
         xdog_threshold = (torch.tanh(100*(xdog-mean))/2+0.5)*max + (torch.tanh(100*(mean - xdog))/2+0.5)*xdog
-        min = torch.min(xdog_threshold)
+        #min = torch.min(xdog_threshold)
         #print(max,"asdf",min)
         #print(((xdog_threshold-min)/(max-min)).cpu().data.numpy())
     #    cv2.imshow("xdog_threshold",np.uint8(255*norm(xdog_threshold).data.cpu().numpy()[0,0,:,:]))
