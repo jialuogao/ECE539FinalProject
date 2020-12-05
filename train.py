@@ -60,7 +60,7 @@ if __name__ == '__main__':
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 print('current iter: ',total_iters,' current loss: ')
-                print(losses['edge'])
+                print(losses)
                 #visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
                 #if opt.display_id > 0:
                     #visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)

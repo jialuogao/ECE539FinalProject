@@ -70,8 +70,8 @@ class CycleGANModel(BaseModel):
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
         
-        #self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B', 'edge']
-        self.loss_names = ['edge']
+        self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B', 'edge']
+        #self.loss_names = ['edge']
         
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A']
@@ -223,8 +223,8 @@ class CycleGANModel(BaseModel):
         #cv2.waitKey(0)
         self.loss_edge = no_sigmoid_cross_entropy(edge_fake_B, edge_real_A) * lambda_sup
         ###
-        #self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
-        self.loss_G = self.loss_edge
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
+        #self.loss_G = self.loss_edge
         self.loss_G.backward()
 
     def optimize_parameters(self):
