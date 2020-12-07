@@ -112,6 +112,7 @@ class CycleGANModel(BaseModel):
             self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)  # define GAN loss.
             self.criterionCycle = torch.nn.L1Loss()
             self.criterionIdt = torch.nn.L1Loss()
+            self.criterionEdge = torch.nn.MSELoss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -202,8 +203,8 @@ class CycleGANModel(BaseModel):
         
         rA = torch.sigmoid(self.real_A)
         fB = torch.sigmoid(self.fake_B)
-        edge_real_A = torch.sigmoid(self.Xdog_model(rA))
-        edge_fake_B = torch.sigmoid(self.Xdog_model(fB))
+        edge_real_A = self.Xdog_model(rA)
+        edge_fake_B = self.Xdog_model(fB)
         '''
         rA_gray = np.zeros((256,256))
         #fB_gray = np.zeros((256,256))
@@ -224,9 +225,9 @@ class CycleGANModel(BaseModel):
         cv2.waitKey(0)
         exit()
         '''
-        self.loss_edge = torch.CrossEntropyLoss(edge_fake_B, edge_real_A) * lambda_sup
+        self.loss_edge = self.criterionEdge(edge_real_A, edge_fake_B)
         ###
-        self.loss_G = 0.05*(self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B) + 2*self.loss_edge
+        self.loss_G = 0.05*(self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B) + lambda_sup*self.loss_edge
         #self.loss_G = self.loss_edge
         self.loss_G.backward()
 
