@@ -199,7 +199,7 @@ class CycleGANModel(BaseModel):
         # combined loss and calculate gradients
         
         ###
-        lambda_sup = 10
+        lambda_sup = 7
         
         rA = torch.sigmoid(self.real_A)
         fB = torch.sigmoid(self.fake_B)
@@ -227,7 +227,7 @@ class CycleGANModel(BaseModel):
         '''
         self.loss_edge = self.criterionEdge(edge_real_A, edge_fake_B)
         ###
-        self.loss_G = 0.05*(self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B) + lambda_sup*self.loss_edge
+        self.loss_G = (self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B) + lambda_sup*self.loss_edge
         #self.loss_G = self.loss_edge
         self.loss_G.backward()
 
