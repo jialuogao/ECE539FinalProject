@@ -224,9 +224,9 @@ class CycleGANModel(BaseModel):
         cv2.waitKey(0)
         exit()
         '''
-        self.loss_edge = no_sigmoid_cross_entropy(edge_fake_B, edge_real_A) * lambda_sup
+        self.loss_edge = torch.CrossEntropyLoss(edge_fake_B, edge_real_A) * lambda_sup
         ###
-        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
+        self.loss_G = 0.05*(self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B) + 2*self.loss_edge
         #self.loss_G = self.loss_edge
         self.loss_G.backward()
 
