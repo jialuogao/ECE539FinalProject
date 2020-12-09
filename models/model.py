@@ -115,7 +115,7 @@ class Xdog(nn.Module):
         #print(((xdog_threshold-min)/(max-min)).cpu().data.numpy())
     #    cv2.imshow("xdog_threshold",np.uint8(255*norm(xdog_threshold).data.cpu().numpy()[0,0,:,:]))
     #    return xdog_threshold
-        return norm(xdog_threshold)
+        return xdog_threshold
     
 
 
