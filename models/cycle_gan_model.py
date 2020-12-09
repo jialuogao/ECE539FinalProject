@@ -199,7 +199,7 @@ class CycleGANModel(BaseModel):
         # combined loss and calculate gradients
         
         ###
-        lambda_sup = 7
+        lambda_sup = 3
         
         rA = torch.sigmoid(self.real_A)
         fB = torch.sigmoid(self.fake_B)
