@@ -21,6 +21,10 @@ def no_sigmoid_cross_entropy(sig_logits, label):
 
     return cost
 
+def norm(img):
+    max = torch.max(img)
+    min = torch.min(img)
+    return (img-min) * 255 / np.float64(max-min)
 
 class CycleGANModel(BaseModel):
     """
@@ -199,35 +203,34 @@ class CycleGANModel(BaseModel):
         # combined loss and calculate gradients
         
         ###
-        lambda_sup = 3
+        lambda_sup = 0.05
         
-        rA = torch.sigmoid(self.real_A)
-        fB = torch.sigmoid(self.fake_B)
-        edge_real_A = self.Xdog_model(rA)
-        edge_fake_B = self.Xdog_model(fB)
+        rA = norm(self.real_A)
+        fB = norm(self.fake_B)
+        edge_real_A = self.Xdog_model(rA, "A")
+        edge_fake_B = self.Xdog_model(fB, "B")
         '''
         rA_gray = np.zeros((256,256))
-        #fB_gray = np.zeros((256,256))
+        fB_gray = np.zeros((256,256))
 
         rA_gray += 0.299 * rA.data.cpu().numpy()[0,0,:,:]
         rA_gray += 0.587 * rA.data.cpu().numpy()[0,1,:,:]
         rA_gray += 0.114 * rA.data.cpu().numpy()[0,2,:,:]
-        #fB_gray += 0.299 * fB.data.cpu().numpy()[0,0,:,:]
-        #fB_gray += 0.587 * fB.data.cpu().numpy()[0,1,:,:]
-        #fB_gray += 0.114 * fB.data.cpu().numpy()[0,2,:,:]
-        #print(rA_gray)
-        cv2.imshow("0",np.uint8(255*rA_gray))
-        #cv2.imshow("1",np.uint8(255*fB_gray))
+        fB_gray += 0.299 * fB.data.cpu().numpy()[0,0,:,:]
+        fB_gray += 0.587 * fB.data.cpu().numpy()[0,1,:,:]
+        fB_gray += 0.114 * fB.data.cpu().numpy()[0,2,:,:]
+        cv2.imshow("0",np.uint8(rA_gray))
+        cv2.imshow("1",np.uint8(fB_gray))
         #edge_real_A = xdog.xdog_thresh(rA_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
         #edge_fake_B = xdog.xdog_thresh(fB_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
         cv2.imshow("2",np.uint8(255*edge_real_A.data.cpu().numpy()[0,0,:,:]))
-        #cv2.imshow("3",np.uint8(255*edge_fake_B.data.cpu().numpy()[0,0,:,:]))
+        cv2.imshow("3",np.uint8(255*edge_fake_B.data.cpu().numpy()[0,0,:,:]))
         cv2.waitKey(0)
         exit()
         '''
-        self.loss_edge = self.criterionEdge(edge_real_A, edge_fake_B)
+        self.loss_edge = self.criterionEdge(edge_real_A, edge_fake_B) * lambda_sup
         ###
-        self.loss_G = (self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B) + lambda_sup*self.loss_edge
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
         #self.loss_G = self.loss_edge
         self.loss_G.backward()
 
