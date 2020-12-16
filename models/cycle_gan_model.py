@@ -6,6 +6,8 @@ from . import networks
 #from . import xdog
 from .model import Xdog
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import cv2
 
 def no_sigmoid_cross_entropy(sig_logits, label):
@@ -24,7 +26,7 @@ def no_sigmoid_cross_entropy(sig_logits, label):
 def norm(img):
     max = torch.max(img)
     min = torch.min(img)
-    return (img-min) * 255 / np.float64(max-min)
+    return (img-min) / np.float64(max-min)
 
 class CycleGANModel(BaseModel):
     """
@@ -75,7 +77,7 @@ class CycleGANModel(BaseModel):
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
         
         self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B', 'edge']
-        #self.loss_names = ['edge']
+        #self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
         
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A']
@@ -116,7 +118,7 @@ class CycleGANModel(BaseModel):
             self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)  # define GAN loss.
             self.criterionCycle = torch.nn.L1Loss()
             self.criterionIdt = torch.nn.L1Loss()
-            self.criterionEdge = torch.nn.MSELoss()
+            self.criterionEdge = torch.nn.L1Loss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -175,6 +177,41 @@ class CycleGANModel(BaseModel):
         fake_A = self.fake_A_pool.query(self.fake_A)
         self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_A, fake_A)
 
+    def plot_grad_flow(self, named_parameters):
+        '''Plots the gradients flowing through different layers in the net during training.
+        Can be used for checking for possible gradient vanishing / exploding problems.
+        
+        Usage: Plug this function in Trainer class after loss.backwards() as 
+        "plot_grad_flow(self.model.named_parameters())" to visualize the gradient flow'''
+        ave_grads = []
+        max_grads= []
+        layers = []
+        for n, p in named_parameters:
+            if(p.requires_grad) and ("bias" not in n):
+                a = p.grad.abs().mean()
+                if (a > torch.tensor(0.5)):
+                    print(n)
+                    print(a)
+        '''
+                layers.append(n)
+                ave_grads.append(p.grad.abs().mean())
+                max_grads.append(p.grad.abs().max())
+        plt.bar(np.arange(len(max_grads)), max_grads, alpha=0.1, lw=1, color="c")
+        plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.1, lw=1, color="b")
+        plt.hlines(0, 0, len(ave_grads)+1, lw=2, color="k" )
+        plt.xticks(range(0,len(ave_grads), 1), layers, rotation="vertical")
+        plt.xlim(left=0, right=len(ave_grads))
+        plt.ylim(bottom = -0.001, top=0.02) # zoom in on the lower gradient regions
+        plt.xlabel("Layers")
+        plt.ylabel("average gradient")
+        plt.title("Gradient flow")
+        plt.grid(True)
+        plt.legend([Line2D([0], [0], color="c", lw=4),
+                    Line2D([0], [0], color="b", lw=4),
+                    Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
+        plt.show()
+        '''
+
     def backward_G(self):
         """Calculate the loss for generators G_A and G_B"""
         lambda_idt = self.opt.lambda_identity
@@ -219,12 +256,12 @@ class CycleGANModel(BaseModel):
         fB_gray += 0.299 * fB.data.cpu().numpy()[0,0,:,:]
         fB_gray += 0.587 * fB.data.cpu().numpy()[0,1,:,:]
         fB_gray += 0.114 * fB.data.cpu().numpy()[0,2,:,:]
-        cv2.imshow("0",np.uint8(rA_gray))
-        cv2.imshow("1",np.uint8(fB_gray))
+        cv2.imshow("0",np.uint8(255*rA_gray))
+        cv2.imshow("1",np.uint8(255*fB_gray))
         #edge_real_A = xdog.xdog_thresh(rA_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
         #edge_fake_B = xdog.xdog_thresh(fB_gray,sigma=0.5,k=1.6, gamma=0.98,epsilon=-0.1,phi=150,alpha=1)
-        cv2.imshow("2",np.uint8(255*edge_real_A.data.cpu().numpy()[0,0,:,:]))
-        cv2.imshow("3",np.uint8(255*edge_fake_B.data.cpu().numpy()[0,0,:,:]))
+        cv2.imshow("2",np.uint8(255*norm(edge_real_A).data.cpu().numpy()[0,0,:,:]))
+        cv2.imshow("3",np.uint8(255*norm(edge_fake_B).data.cpu().numpy()[0,0,:,:]))
         cv2.waitKey(0)
         exit()
         '''
@@ -233,6 +270,7 @@ class CycleGANModel(BaseModel):
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
         #self.loss_G = self.loss_edge
         self.loss_G.backward()
+        #self.plot_grad_flow(self.netG_A.named_parameters())
 
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""

@@ -46,7 +46,7 @@ def xdog_thresh(img, sigma=0.5,k=1.6, gamma=1,epsilon=1,phi=1,alpha=1):
 def norm(img):
     max = torch.max(img)
     min = torch.min(img)
-    return (img-min) * 255 / np.float64(max-min)
+    return (img-min) / np.float64(max-min)
 
 class Xdog(nn.Module):
     def __init__(self):
@@ -54,8 +54,8 @@ class Xdog(nn.Module):
         self.sigma=0.8
         self.k=2.5
         self.gamma=0.98
-        self.epsilon=-0.2
-        self.phi=10
+        self.epsilon=0
+        self.phi=200
         kernel=round(self.sigma*self.k*3*2 + 1)|1
         padding=int(kernel/2)
         stride=1
@@ -120,16 +120,17 @@ class Xdog(nn.Module):
         # gaussian
         
         pool = self.avg_pool(gray)
-    #    cv2.imshow("blur"+name,np.uint8(self.blur(pool).data.cpu().numpy()[0,0,:,:]))
+    #    cv2.imshow("blur"+name,np.uint8(255*norm(self.blur(pool)).data.cpu().numpy()[0,0,:,:]))
         dog = self.gauss_conv_dog(self.blur(pool))
-    #    cv2.imshow("dog"+name,np.uint8(norm(dog).data.cpu().numpy()[0,0,:,:]))
+    #    cv2.imshow("dog"+name,np.uint8(255*norm(dog).data.cpu().numpy()[0,0,:,:]))
         #print(dog)
         #print(torch.max(gauss1).cpu().data.numpy())
         #print('dog: ',dog.shape)
         #epsilon = torch.mean(dog) * 1.1
         #print(torch.max(dog), '   ', torch.min(dog))
         #print(epsilon,'  ', self.epsilon)
-        xdog = 1 + torch.tanh(self.phi * (torch.tanh(10*(dog-self.epsilon))/2+0.5)*dog)
+        #xdog = 1 + torch.tanh(self.phi * (torch.tanh(2*(dog-self.epsilon))/2+0.5)*dog)
+        xdog = 1 + torch.tanh(self.phi * dog)
         '''
         xdog2 = dog.data.cpu().numpy()[0,0,:,:]
         for i in range(0,xdog2.shape[0]):
@@ -142,19 +143,19 @@ class Xdog(nn.Module):
         temp = (xdog2 - np.min(xdog2))/(np.max(xdog2)-np.min(xdog2))
         cv2.imshow("xdog2"+name,np.uint8(temp*255))
         '''
-    #    cv2.imshow("xdog"+name,np.uint8(norm(xdog).data.cpu().numpy()[0,0,:,:]))
+    #    cv2.imshow("xdog"+name,np.uint8(255*norm(xdog).data.cpu().numpy()[0,0,:,:]))
         #print(xdog.data.cpu().numpy())
         #print('xdog: ',xdog.shape)
-        gauss3 = self.gauss_conv3(xdog)
-    #    cv2.imshow("gauss3"+name,np.uint8(norm(gauss3).data.cpu().numpy()[0,0,:,:]))
-        mean = torch.mean(gauss3)*0.95
-        max = torch.max(gauss3)
-        xdog_threshold = (torch.tanh(10*(gauss3-mean))/2+0.5)*max + (torch.tanh(10*(mean - gauss3))/2+0.5)*gauss3
+    #    gauss3 = self.gauss_conv3(xdog)
+    #    cv2.imshow("gauss3"+name,np.uint8(255*norm(gauss3).data.cpu().numpy()[0,0,:,:]))
+    #    mean = torch.mean(gauss3)*0.95
+    #    max = torch.max(gauss3)
+    #    xdog_threshold = (torch.tanh(2*(gauss3-mean))/2+0.5)*max + (torch.tanh(2*(mean - gauss3))/2+0.5)*gauss3
         #min = torch.min(xdog_threshold)
         #print(max,"asdf",min)
         #print(((xdog_threshold-min)/(max-min)).cpu().data.numpy())
-    #    cv2.imshow("xdog_threshold"+name,np.uint8(norm(xdog_threshold).data.cpu().numpy()[0,0,:,:]))
-        return norm(xdog_threshold)/255
+    #    cv2.imshow("xdog_threshold"+name,np.uint8(255*norm(xdog_threshold).data.cpu().numpy()[0,0,:,:]))
+        return xdog
     
 
 
