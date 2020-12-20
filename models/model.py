@@ -55,7 +55,7 @@ class Xdog(nn.Module):
         self.k=2.5
         self.gamma=0.98
         self.epsilon=0
-        self.phi=200
+        self.phi=1
         kernel=round(self.sigma*self.k*3*2 + 1)|1
         padding=int(kernel/2)
         stride=1

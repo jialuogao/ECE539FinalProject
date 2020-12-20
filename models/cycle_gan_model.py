@@ -107,7 +107,7 @@ class CycleGANModel(BaseModel):
             self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             ##################
-            #self.Xdog_model = Xdog()
+            self.Xdog_model = Xdog()
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
@@ -118,7 +118,7 @@ class CycleGANModel(BaseModel):
             self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)  # define GAN loss.
             self.criterionCycle = torch.nn.L1Loss()
             self.criterionIdt = torch.nn.L1Loss()
-            #self.criterionEdge = torch.nn.L1Loss()
+            self.criterionEdge = torch.nn.L1Loss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -240,12 +240,12 @@ class CycleGANModel(BaseModel):
         # combined loss and calculate gradients
         
         ###
-        lambda_sup = 0.05
+        lambda_sup = 0.1
         
-        #rA = norm(self.real_A)
-        #fB = norm(self.fake_B)
-        #edge_real_A = self.Xdog_model(rA, "A")
-        #edge_fake_B = self.Xdog_model(fB, "B")
+        rA = norm(self.real_A)
+        fB = norm(self.fake_B)
+        edge_real_A = self.Xdog_model(rA, "A")
+        edge_fake_B = self.Xdog_model(fB, "B")
         '''
         rA_gray = np.zeros((256,256))
         fB_gray = np.zeros((256,256))
@@ -265,9 +265,9 @@ class CycleGANModel(BaseModel):
         cv2.waitKey(0)
         exit()
         '''
-        #self.loss_edge = self.criterionEdge(edge_real_A, edge_fake_B) * lambda_sup
+        self.loss_edge = self.criterionEdge(edge_real_A, edge_fake_B) * lambda_sup
         ###
-        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B# + self.loss_edge
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_edge
         #self.loss_G = self.loss_edge
         self.loss_G.backward()
         #self.plot_grad_flow(self.netG_A.named_parameters())
